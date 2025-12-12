@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THAKHI ELITE V8 - FIXED & PDF</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #050505; --bg-panel: #111; --border: rgba(255,255,255,0.1);
+            --primary: #3b82f6; --accent: #f59e0b; --tech: #00d4ff; --success: #00e676; --danger: #ff1744;
+            --font-main: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
+        }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { margin: 0; background: var(--bg-deep); color: #e5e5e5; font-family: var(--font-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* HEADER */
+        header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #0a0a0a; z-index: 50; }
+        .brand { font-weight: 900; display: flex; gap: 8px; align-items: center; }
+        .live-dot { width: 8px; height: 8px; background: var(--danger); border-radius: 50%; box-shadow: 0 0 8px var(--danger); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%{opacity:1} 50%{opacity:0.5} 100%{opacity:1} }
+        .scoreboard { display: flex; align-items: center; gap: 20px; background: #151515; padding: 6px 20px; border-radius: 6px; border: 1px solid var(--border); }
+        .score-val { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; width: 30px; text-align: center; }
+        .btn-pro { background: #222; border: 1px solid var(--border); color: white; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; transition:0.2s; }
+        .btn-pro:hover { background: #333; border-color:white; }
+        .btn-pro.highlight { border-color: var(--tech); color: var(--tech); background: rgba(0, 212, 255, 0.05); }
+
+        /* WORKSPACE */
+        .workspace { flex: 1; display: flex; overflow: hidden; }
+        .toolbar { width: 64px; display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 10px; background: var(--bg-panel); border-right: 1px solid var(--border); }
+        .tool-btn { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.2rem; transition: 0.2s; cursor: pointer; border:1px solid transparent; }
+        .tool-btn.active { background: #e5e5e5; color: black; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        
+        /* ARENA */
+        .arena { flex: 1; display: flex; flex-direction: column; background: #080808; position: relative; }
+        .pitch-container { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+        .pitch-wrap { width: 96%; aspect-ratio: 105/68; position: relative; box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; background: #1e241f; }
+        #pitch-svg { width: 100%; height: 100%; z-index: 10; position: relative; cursor: crosshair; }
+        .grass-pattern { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0, rgba(255,255,255,0.02) 5%, transparent 5%, transparent 10%); pointer-events: none; }
+        
+        /* RADAR CHART */
+        #radar-container { position: absolute; bottom: 10px; right: 10px; width: 160px; height: 160px; z-index: 20; background:rgba(0,0,0,0.5); border-radius:10px; backdrop-filter:blur(4px); pointer-events:none; }
+        #radar-canvas { width: 100%; height: 100%; }
+
+        /* SIDEBAR */
+        .sidebar { width: 320px; background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 20; }
+        .widget { padding: 15px; border-bottom: 1px solid var(--border); }
+        .widget-head { font-size: 0.65rem; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; align-items: center; }
+        .stat-num { font-family: var(--font-mono); font-weight: 700; }
+        .rating-list { flex:1; overflow-y: auto; max-height: 200px; }
+        .player-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.8rem; }
+        .feed { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; border-top:1px solid var(--border); }
+        .feed-item { padding: 8px; background: rgba(255,255,255,0.03); border-radius: 4px; border-left: 2px solid #444; font-size: 0.75rem; display: flex; justify-content: space-between; }
+
+        /* MODALS */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .overlay.active { display: flex; }
+        .modal { width: 600px; max-width:95%; background: #111; border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap:15px; }
+        input, select { width: 100%; background: #080808; border: 1px solid #333; color: white; padding: 10px; border-radius: 6px; font-family:var(--font-main);}
+        .btn-action { width: 100%; padding: 12px; background: white; color: black; border: none; font-weight: 800; border-radius: 6px; cursor: pointer; }
+
+        /* SHOT MODAL SPECIFIC */
+        .seg-control { display: flex; background: #080808; padding: 4px; border-radius: 6px; margin-bottom: 15px; }
+        .seg-btn { flex: 1; padding: 10px; text-align: center; border-radius: 4px; font-size: 0.8rem; cursor: pointer; color: #666; transition: 0.2s; }
+        .seg-btn.selected { background: #222; color: white; font-weight: bold; }
+        .goal-frame { height: 120px; background: repeating-linear-gradient(45deg, #1a1a1a 0, #1a1a1a 1px, transparent 1px, transparent 10px); border: 2px solid #555; position: relative; cursor: crosshair; }
+        .goal-mark { width: 12px; height: 12px; background: var(--danger); border-radius: 50%; position: absolute; border: 2px solid white; display: none; transform: translate(-50%, -50%); }
+
+        /* --- PDF PRINT TEMPLATE --- */
+        #pdf-template {
+            display: none; background: white; color: black; padding: 40px; font-family: 'Inter', sans-serif; width: 800px;
+        }
+        .pdf-header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .pdf-score-box { display: flex; justify-content: center; align-items: center; gap: 40px; font-size: 3rem; font-weight: 900; margin: 20px 0; }
+        .pdf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .pdf-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; }
+        .pdf-stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
+        .pdf-table th { text-align: left; border-bottom: 2px solid #ccc; padding: 5px; }
+        .pdf-table td { border-bottom: 1px solid #eee; padding: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="modal-setup" class="overlay active">
+        <div class="modal" style="width:400px">
+            <h3 style="margin:0">CONFIGURATION MATCH</h3>
+            <div><label style="font-size:0.7rem; color:#888;">DOMICILE</label><input id="init-h" value="Home FC"></div>
+            <div><label style="font-size:0.7rem; color:#888;">EXTÉRIEUR</label><input id="init-a" value="Away FC"></div>
+            <button onclick="startGame()" class="btn-action">INITIALISER</button>
+        </div>
+    </div>
+
+    <div id="modal-act" class="overlay">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0">DÉTAILS DU TIR</h3>
+                <button onclick="closeModal('modal-act')" style="background:transparent; border:none; color:#666; cursor:pointer;">✕</button>
+            </div>
+            
+            <div class="seg-control">
+                <div id="act-tm-h" class="seg-btn selected">DOMICILE</div>
+                <div id="act-tm-a" class="seg-btn">EXTÉRIEUR</div>
+            </div>
+
+            <div style="display:flex; gap:20px;">
+                <div style="flex:1">
+                    <label style="font-size:0.7rem; color:#888;">TYPE</label>
+                    <select id="act-type" onchange="calcXG()">
+                        <option value="Open">Jeu Placé</option>
+                        <option value="Counter">Contre-Attaque</option>
+                        <option value="SetPiece">CPA / Corner</option>
+                    </select>
+                    <label style="font-size:0.7rem; color:#888; margin-top:10px; display:block;">JOUEUR</label>
+                    <select id="act-player"></select>
+                </div>
+                <div style="flex:1">
+                     <label style="font-size:0.7rem; color:#888;">PLACEMENT (Cliquez pour xG)</label>
+                     <div class="goal-frame" onclick="placeShot(event)">
+                        <div style="position:absolute; bottom:0; width:100%; height:2px; background:#555;"></div>
+                        <div style="position:absolute; bottom:0; left:10px; height:80%; width:2px; background:#555;"></div>
+                        <div style="position:absolute; bottom:0; right:10px; height:80%; width:2px; background:#555;"></div>
+                        <div style="position:absolute; bottom:80%; left:10px; right:10px; height:2px; background:#555;"></div>
+                        <div id="shot-mark" class="goal-mark"></div>
+                     </div>
+                     <div style="text-align:center; font-family:var(--font-mono); font-size:1.5rem; font-weight:bold; color:var(--tech); margin-top:10px;" id="act-xg">0.00 xG</div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:10px;">
+                <button class="btn-pro highlight" style="justify-content:center" onclick="saveAct('Goal')">BUT</button>
+                <button class="btn-pro" style="justify-content:center" onclick="saveAct('Save')">ARRÊT</button>
+                <button class="btn-pro" style="justify-content:center" onclick="saveAct('Miss')">RATÉ</button>
+                <button class="btn-pro" style="justify-content:center" onclick="saveAct('Block')">CONTRÉ</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="brand"><div class="live-dot"></div>THAKHI <span style="color:var(--tech); font-weight:400;">ELITE</span></div>
+        <div class="scoreboard">
+            <span id="sb-h" class="score-val" style="color:var(--primary)">0</span>
+            <div id="timer" style="font-family:var(--font-mono); font-weight:bold; cursor:pointer; width:60px; text-align:center;" onclick="toggleTimer()">00:00</div>
+            <span id="sb-a" class="score-val" style="color:var(--accent)">0</span>
+        </div>
+        <button class="btn-pro highlight" onclick="generatePDF()"><span>📄</span> EXPORT PDF</button>
+    </header>
+
+    <div class="workspace">
+        <div class="toolbar">
+            <div class="tool-btn active" id="tool-act" onclick="setTool('act')">📍</div>
+            <div class="tool-btn" id="tool-shot" onclick="setTool('shot')">⚽</div>
+            <div class="tool-btn" id="tool-rec" onclick="setTool('rec')">⚡</div>
+            <div class="tool-btn" id="tool-lb" onclick="setTool('lb')">🚀</div>
+            <div style="height:1px; width:40px; background:#333; margin:5px 0;"></div>
+            <div class="tool-btn" onclick="toggleGrid30()" style="color:white; font-size:1rem; border:1px solid rgba(255,255,255,0.2);">#</div>
+        </div>
+
+        <div class="arena">
+            <div class="pitch-container">
+                <div class="pitch-wrap">
+                    <div class="grass-pattern"></div>
+                    <div id="radar-container"><canvas id="radar-canvas"></canvas></div>
+                    
+                    <svg id="pitch-svg" viewBox="0 0 105 68" onclick="pitchClick(event)">
+                        <g stroke="rgba(255,255,255,0.15)" stroke-width="0.3" fill="none">
+                            <rect width="105" height="68"/>
+                            <line x1="52.5" y1="0" x2="52.5" y2="68"/>
+                            <circle cx="52.5" cy="34" r="9.15"/>
+                            <rect x="0" y="13.84" width="16.5" height="40.32"/><rect x="88.5" y="13.84" width="16.5" height="40.32"/>
+                            <rect x="0" y="24.84" width="5.5" height="18.32"/><rect x="99.5" y="24.84" width="5.5" height="18.32"/>
+                        </g>
+                        <g id="grid-30" style="display:none;"></g>
+                        <g id="dynamic-layer"></g>
+                    </svg>
+                </div>
+            </div>
+            <div style="height:40px; background:#0c0c0c; border-top:1px solid var(--border); display:flex; align-items:flex-end; padding:0 10px;" id="mom-strip"></div>
+        </div>
+
+        <div class="sidebar">
+            <div class="widget">
+                <div class="widget-head">POSSESSION</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-pro" style="flex:1; justify-content:center;" id="btn-p-h" onclick="setPoss('home')">HOME</button>
+                    <button class="btn-pro" style="flex:1; justify-content:center;" id="btn-p-a" onclick="setPoss('away')">AWAY</button>
+                </div>
+                <div style="height:4px; background:#222; width:100%; display:flex; margin-top:10px;">
+                    <div id="bar-h" style="width:50%; background:var(--primary); transition:0.3s"></div>
+                    <div id="bar-a" style="width:50%; background:var(--accent); transition:0.3s"></div>
+                </div>
+            </div>
+            <div class="widget">
+                <div class="widget-head">METRICS</div>
+                <div class="stat-row"><span>Tirs</span><span class="stat-num"><span style="color:var(--primary)" id="val-sh-h">0</span> - <span style="color:var(--accent)" id="val-sh-a">0</span></span></div>
+                <div class="stat-row"><span>Passes</span><span class="stat-num"><span style="color:var(--primary)" id="val-pa-h">0</span> - <span style="color:var(--accent)" id="val-pa-a">0</span></span></div>
+                <div class="stat-row"><span>Casse-Lignes</span><span class="stat-num"><span style="color:var(--primary)" id="val-lb-h">0</span> - <span style="color:var(--accent)" id="val-lb-a">0</span></span></div>
+                <div class="stat-row"><span>Récupérations</span><span class="stat-num"><span style="color:var(--primary)" id="val-rec-h">0</span> - <span style="color:var(--accent)" id="val-rec-a">0</span></span></div>
+            </div>
+            <div class="widget" style="flex:1; display:flex; flex-direction:column;">
+                <div class="widget-head">TOP PLAYERS</div>
+                <div class="rating-list" id="rating-list"></div>
+                <div class="widget-head" style="margin-top:10px;">FEED</div>
+                <div class="feed" id="feed"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pdf-template">
+        <div class="pdf-header">
+            <h1>RAPPORT DE MATCH</h1>
+            <p>Généré par THAKHI ANALYST</p>
+        </div>
+        <div class="pdf-score-box">
+            <span style="color:#000" id="pdf-name-h">HOME</span>
+            <span id="pdf-score">0 - 0</span>
+            <span style="color:#555" id="pdf-name-a">AWAY</span>
+        </div>
+        <div class="pdf-grid">
+            <div class="pdf-card">
+                <h3>STATISTIQUES</h3>
+                <div class="pdf-stat-row"><span>Possession</span><span id="pdf-poss">50% - 50%</span></div>
+                <div class="pdf-stat-row"><span>Tirs</span><span id="pdf-shots">0 - 0</span></div>
+                <div class="pdf-stat-row"><span>Passes</span><span id="pdf-pass">0 - 0</span></div>
+                <div class="pdf-stat-row"><span>Casse-Lignes</span><span id="pdf-lb">0 - 0</span></div>
+                <div class="pdf-stat-row"><span>Récupérations</span><span id="pdf-rec">0 - 0</span></div>
+            </div>
+            <div class="pdf-card">
+                <h3>RADAR DE PERFORMANCE</h3>
+                <div id="pdf-radar-mount" style="width:200px; height:200px; margin:0 auto;"></div>
+            </div>
+        </div>
+        <div style="margin-top:30px;">
+            <h3>DÉTAIL JOUEURS</h3>
+            <table class="pdf-table" id="pdf-table-h">
+                <thead><tr><th>Joueur (Domicile)</th><th>Note</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <br>
+            <table class="pdf-table" id="pdf-table-a">
+                <thead><tr><th>Joueur (Extérieur)</th><th>Note</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- CORE LOGIC ---
+        const game = {
+            home: { name:'Home', stats: { pass:0, shots:0, lb:0, rec:0 }, players:[] },
+            away: { name:'Away', stats: { pass:0, shots:0, lb:0, rec:0 }, players:[] },
+            timer: 0, running: false, poss: null, possTime: { home:0, away:0 }, mom: 0
+        };
+        let tool = 'act'; 
+        let actTeam = 'home';
+        let tempShot = {x:0, y:0, dist:0, xg:0};
+
+        // Init
+        function startGame() {
+            game.home.name = document.getElementById('init-h').value || 'Home';
+            game.away.name = document.getElementById('init-a').value || 'Away';
+            game.home.players = genPlayers('home'); game.away.players = genPlayers('away');
+            
+            document.getElementById('btn-p-h').innerText = game.home.name.substring(0,8);
+            document.getElementById('btn-p-a').innerText = game.away.name.substring(0,8);
+            document.getElementById('modal-setup').classList.remove('active');
+            
+            initMomentum();
+            drawGrid30();
+            updateUI();
+        }
+
+        function genPlayers(t) { return (t==='home'?['Lloris','Varane','Theo','Griezmann','Mbappe']:['Martinez','Romero','DePaul','Messi','Alvarez']).map(n=>({name:n,rating:6.0,acts:0})); }
+        
+        function toggleTimer() { game.running = !game.running; }
+        
+        setInterval(() => {
+            if(!game.running) return;
+            game.timer++;
+            let m = Math.floor(game.timer/60).toString().padStart(2,'0');
+            document.getElementById('timer').innerText = m+":"+(game.timer%60).toString().padStart(2,'0');
+            
+            if(game.poss) {
+                game.possTime[game.poss]++;
+                game.mom += (game.poss==='home' ? 0.05 : -0.05);
+            }
+            game.mom *= 0.98;
+            updateMomentumViz();
+            updateUI();
+        }, 1000);
+
+        function pitchClick(e) {
+            if(!game.running) return;
+            let r=e.currentTarget.getBoundingClientRect(); 
+            let x=e.clientX-r.left; let y=e.clientY-r.top;
+            
+            // Visual Dot
+            let c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+            c.setAttribute("cx",x/r.width*105); c.setAttribute("cy",y/r.height*68); c.setAttribute("r",0.6); c.setAttribute("fill","white");
+            document.getElementById('dynamic-layer').appendChild(c); setTimeout(()=>c.remove(),800);
+
+            let tm = game.poss || 'home';
+            let stats = game[tm].stats;
+            
+            if(tool === 'act') { 
+                stats.pass++; 
+                game.mom+=(tm==='home'?0.1:-0.1); 
+                updateP(tm,0.05); 
+            }
+            else if(tool === 'shot') { 
+                // OUVRIR MODALE DE TIR
+                actTeam = tm;
+                tempShot = {x:x, y:y, dist: Math.hypot((tm==='home'?105:0)-x, 34-y), xg:0};
+                openActModal();
+                return; // Stop here, handle rest in modal
+            }
+            else if(tool === 'lb') { stats.lb++; log(tm,'Casse-Ligne','🚀'); updateP(tm,0.4); }
+            else if(tool === 'rec') { 
+                let t = tm==='home'?'away':'home'; 
+                setPoss(t); 
+                game[t].stats.rec++; 
+                log(t,'Récupération','⚡'); updateP(t,0.3); 
+            }
+            updateUI();
+        }
+
+        // --- SHOT LOGIC ---
+        function openActModal() {
+            // Update UI Colors
+            document.getElementById('act-tm-h').className = 'seg-btn ' + (actTeam==='home'?'selected':'');
+            document.getElementById('act-tm-a').className = 'seg-btn ' + (actTeam==='away'?'selected':'');
+            
+            // Populate Players
+            let sel = document.getElementById('act-player'); sel.innerHTML='';
+            game[actTeam].players.forEach(p => {
+                let o = document.createElement('option'); o.text=p.name; sel.add(o);
+            });
+
+            // Initial xG
+            calcXG();
+            document.getElementById('shot-mark').style.display = 'none';
+            document.getElementById('modal-act').classList.add('active');
+        }
+
+        function placeShot(e) {
+            let r = e.currentTarget.getBoundingClientRect();
+            let b = document.getElementById('shot-mark');
+            b.style.display='block';
+            b.style.left=(e.clientX-r.left)+'px';
+            b.style.top=(e.clientY-r.top)+'px';
+            calcXG(true);
+        }
+
+        function calcXG(placed=false) {
+            let base = 0.75 * Math.exp(-0.1 * (tempShot.dist/5)); // Basic simple dist model
+            let type = document.getElementById('act-type').value;
+            if(type==='Counter') base *= 1.3;
+            if(placed) base *= 1.2;
+            tempShot.xg = base;
+            document.getElementById('act-xg').innerText = base.toFixed(2) + " xG";
+        }
+
+        function saveAct(outcome) {
+            let tm = game[actTeam];
+            tm.stats.shots++;
+            tm.stats.xg += tempShot.xg; // Add xG to total
+            
+            if(outcome === 'Goal') {
+                document.getElementById('sb-'+(actTeam==='home'?'h':'a')).innerText++;
+                log(actTeam, 'BUT !!!', '⚽');
+                updateP(actTeam, 1.5);
+                game.mom += (actTeam==='home'?5:-5);
+            } else {
+                log(actTeam, 'Tir ('+outcome+')', '◎');
+                updateP(actTeam, 0.2);
+            }
+            updateUI();
+            closeModal('modal-act');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // --- COMMON ---
+        function updateP(t, d) {
+            let p = game[t].players[Math.floor(Math.random()*game[t].players.length)];
+            p.rating = Math.min(10, p.rating + d);
+            p.acts++;
+        }
+
+        function updateUI() {
+            // Stats
+            document.getElementById('val-sh-h').innerText = game.home.stats.shots;
+            document.getElementById('val-sh-a').innerText = game.away.stats.shots;
+            document.getElementById('val-pa-h').innerText = game.home.stats.pass;
+            document.getElementById('val-pa-a').innerText = game.away.stats.pass;
+            document.getElementById('val-lb-h').innerText = game.home.stats.lb;
+            document.getElementById('val-lb-a').innerText = game.away.stats.lb;
+            document.getElementById('val-rec-h').innerText = game.home.stats.rec;
+            document.getElementById('val-rec-a').innerText = game.away.stats.rec;
+
+            // Poss
+            let tot = game.possTime.home + game.possTime.away || 1;
+            let hp = (game.possTime.home/tot)*100;
+            document.getElementById('bar-h').style.width = hp+'%';
+            document.getElementById('bar-a').style.width = (100-hp)+'%';
+
+            // Players
+            let l = document.getElementById('rating-list'); l.innerHTML='';
+            let all = [...game.home.players.map(p=>({...p,t:'home'})), ...game.away.players.map(p=>({...p,t:'away'}))].sort((a,b)=>b.rating-a.rating);
+            all.forEach(p => {
+                let d=document.createElement('div'); d.className='player-row';
+                d.innerHTML=`<span style="color:${p.t==='home'?'var(--primary)':'var(--accent)'}">${p.name}</span><b>${p.rating.toFixed(1)}</b>`;
+                l.appendChild(d);
+            });
+            drawRadar();
+        }
+
+        function drawRadar() {
+            let cv = document.getElementById('radar-canvas'); 
+            cv.width = cv.clientWidth; cv.height = cv.clientHeight;
+            let ctx = cv.getContext('2d');
+            let w=cv.width, h=cv.height, cx=w/2, cy=h/2, r=w/2-10;
+            
+            ctx.clearRect(0,0,w,h);
+            ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.beginPath();
+            for(let i=0;i<5;i++){ let a=(Math.PI*2*i)/5-Math.PI/2; ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r); }
+            ctx.closePath(); ctx.stroke();
+
+            function getPts(tm) {
+                let s = game[tm].stats;
+                let vals = [
+                    Math.min(1, s.shots/10), Math.min(1, s.pass/30), Math.min(1, s.rec/10), Math.min(1, s.lb/5), 
+                    tm==='home' ? (game.possTime.home/(game.possTime.home+game.possTime.away||1)) : (game.possTime.away/(game.possTime.home+game.possTime.away||1))
+                ];
+                return vals.map((v,i) => { let a=(Math.PI*2*i)/5-Math.PI/2; return {x:cx+Math.cos(a)*(r*v), y:cy+Math.sin(a)*(r*v)}; });
+            }
+            function drawPoly(pts, col) {
+                ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.beginPath();
+                pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+                ctx.closePath(); ctx.stroke(); ctx.globalAlpha=0.3; ctx.fill(); ctx.globalAlpha=1;
+            }
+            drawPoly(getPts('home'), '#3b82f6');
+            drawPoly(getPts('away'), '#f59e0b');
+        }
+
+        // --- PDF ---
+        function generatePDF() {
+            document.getElementById('pdf-name-h').innerText = game.home.name;
+            document.getElementById('pdf-name-a').innerText = game.away.name;
+            document.getElementById('pdf-score').innerText = document.getElementById('sb-h').innerText + " - " + document.getElementById('sb-a').innerText;
+            
+            document.getElementById('pdf-shots').innerText = game.home.stats.shots + " - " + game.away.stats.shots;
+            document.getElementById('pdf-pass').innerText = game.home.stats.pass + " - " + game.away.stats.pass;
+            document.getElementById('pdf-lb').innerText = game.home.stats.lb + " - " + game.away.stats.lb;
+            document.getElementById('pdf-rec').innerText = game.home.stats.rec + " - " + game.away.stats.rec;
+            let tot = game.possTime.home+game.possTime.away||1;
+            document.getElementById('pdf-poss').innerText = Math.round(game.possTime.home/tot*100) + "% - " + Math.round(game.possTime.away/tot*100) + "%";
+
+            let originalCanvas = document.getElementById('radar-canvas');
+            let mount = document.getElementById('pdf-radar-mount');
+            mount.innerHTML = '';
+            let img = document.createElement('img');
+            img.src = originalCanvas.toDataURL();
+            img.style.width = "100%";
+            mount.appendChild(img);
+
+            function fillTable(tid, players) {
+                let tbody = document.getElementById(tid).querySelector('tbody');
+                tbody.innerHTML = '';
+                players.sort((a,b)=>b.rating-a.rating).forEach(p => {
+                    tbody.innerHTML += `<tr><td>${p.name}</td><td><b>${p.rating.toFixed(1)}</b></td><td>${p.acts}</td></tr>`;
+                });
+            }
+            fillTable('pdf-table-h', game.home.players);
+            fillTable('pdf-table-a', game.away.players);
+
+            const element = document.getElementById('pdf-template');
+            element.style.display = 'block';
+            
+            const opt = {
+                margin: 10,
+                filename: 'Rapport_Match.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.style.display = 'none';
+            });
+        }
+
+        // Helpers
+        function setTool(t) { tool=t; document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active')); document.getElementById('tool-'+t).classList.add('active'); }
+        function setPoss(s) { game.poss=s; document.getElementById('btn-p-h').style.border=s==='home'?'1px solid white':'1px solid transparent'; document.getElementById('btn-p-a').style.border=s==='away'?'1px solid white':'1px solid transparent'; }
+        function log(t,m,i){ let f=document.getElementById('feed'); let d=document.createElement('div'); d.className='feed-item'; d.style.borderLeftColor=t==='home'?'var(--primary)':'var(--accent)'; d.innerHTML=`<span>${Math.floor(game.timer/60)}' ${m}</span><span>${i}</span>`; f.prepend(d); }
+        function initMomentum(){ const s=document.getElementById('mom-strip'); for(let i=0;i<50;i++){ let b=document.createElement('div'); b.id='mb-'+i; b.style.flex='1'; b.style.background='#333'; b.style.opacity='0.3'; b.style.margin='0 1px'; s.appendChild(b); } }
+        function updateMomentumViz(){ let idx=Math.floor(game.timer/20)%50; let b=document.getElementById('mb-'+idx); if(b){ b.style.height=Math.max(2,Math.abs(game.mom)*5)+'px'; b.style.background=game.mom>0?'var(--primary)':'var(--accent)'; b.style.opacity=1; setTimeout(()=>b.style.opacity=0.3,500); } }
+        function drawGrid30() {
+            const g=document.getElementById('grid-30'); g.innerHTML=''; const w=17.5, h=13.6;
+            for(let c=0;c<6;c++){ for(let r=0;r<5;r++){
+                let n=(c*5)+r+1; let gr=document.createElementNS("http://www.w3.org/2000/svg","g");
+                let rect=document.createElementNS("http://www.w3.org/2000/svg","rect");
+                rect.setAttribute("x",c*w); rect.setAttribute("y",r*h); rect.setAttribute("width",w); rect.setAttribute("height",h);
+                rect.setAttribute("fill","none"); rect.setAttribute("stroke","rgba(255,255,255,0.2)"); rect.setAttribute("stroke-width","0.1");
+                let txt=document.createElementNS("http://www.w3.org/2000/svg","text");
+                txt.setAttribute("x",c*w+w/2); txt.setAttribute("y",r*h+h/2); txt.setAttribute("fill","rgba(255,255,255,0.5)"); 
+                txt.setAttribute("font-size","3"); txt.setAttribute("text-anchor","middle"); txt.textContent=n;
+                if([7,8,9].includes(n)){ rect.setAttribute("fill","rgba(255,255,0,0.1)"); }
+                if([22,23,24].includes(n)){ rect.setAttribute("fill","rgba(0,255,0,0.1)"); }
+                gr.appendChild(rect); gr.appendChild(txt); g.appendChild(gr);
+            }}
+        }
+        function toggleGrid30(){ let g=document.getElementById('grid-30'); g.style.display=g.style.display==='none'?'block':'none'; }
+    </script>
+</body>
+</html>
